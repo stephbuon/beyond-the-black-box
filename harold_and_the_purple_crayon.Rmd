@@ -1,0 +1,78 @@
+---
+title: "Keywords in Harold and the Purple Crayon"
+author: "Steph Buongiorno"
+date: "2025-04-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Keywords in Harold and the Purple Crayon
+
+This notebook demonstrates how LLMs can function as catalysts for programmatic text mining within the framework of Critical Generative Interpretation. It represents the second step in a two-step workflow (review "harold_and_the_purple_crayon.ipynb" for the first step) that begins with keyword generation—comparing a list produced by an LLM with one curated by a human scholar for analyzing _Harold and the Purple Crayon_. These keyword lists serve as the basis for word co-occurrence analysis, revealing patterns of proximity and association within the text. The notebook highlights interpretive differences between humans and AI, drawing attention to the biases embedded in both AI and human selection processes. 
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(treemapify)
+```
+
+```{r}
+# Read Harold and the Purple Crayon as a list of strings named
+# harold_and_the_purple_crayon
+# Removed for copyright
+```
+
+```{r}
+harold_df <- data.frame(sentence_number = seq_along(harold_and_the_purple_crayon),
+                        text = unlist(harold_and_the_purple_crayon),
+                        stringsAsFactors = FALSE)
+```
+
+```{r}
+stopwords <- c("for", "a", "the", "and", "it","so", "if", "of", "into", "an", "in", 
+               "with", "get", "getting", "was", "were", "put")
+
+keyword <- "moonlight"
+
+keyword_regex <- paste0("\\b", keyword, "\\b")
+
+harold_pairs <- harold_df %>%
+  mutate(next_text = lead(text)) %>%
+  filter(!is.na(next_text)) %>%
+  mutate(pair_text = paste(text, next_text, sep = " ")) %>%
+  select(sentence_number, pair_text)
+
+harold_pairs_2 <- harold_pairs %>%
+  filter(str_detect(pair_text, keyword_regex))
+
+harold_keyword_pairs <- harold_pairs_2 %>%
+  unnest_tokens(word, pair_text) %>%
+  filter(!str_detect(word, "[:digit:]")) %>%
+  filter(!str_detect(word, keyword_regex)) %>%
+  #filter(!word %in% stopwords) %>%
+  count(word) %>%
+  arrange(desc(n))
+
+ggplot(harold_keyword_pairs, aes(area = n, label = word, fill = n)) +
+  geom_treemap() +
+  geom_treemap_text(colour = "white", place = "center", grow = TRUE, reflow = TRUE) +
+  scale_fill_gradient(low = "#9370DB", high = "#4B0082")  +
+  labs(title = paste0("Treemap for the Word \"", str_to_sentence(word), "\"")) +
+  theme_minimal()
+```
+
+```{r}
+# Save image to disk
+
+#treemap_plot <- ggplot(harold_keyword_pairs, aes(area = n, label = word, fill = n)) +
+#  geom_treemap() +
+#  geom_treemap_text(colour = "white", place = "center", grow = TRUE, reflow = TRUE) +
+#  scale_fill_gradient(low = "#9370DB", high = "#4B0082")  +
+#  labs(title = paste0("Treemap for the Word \"", str_to_sentence(word), "\"")) +
+#  theme_minimal()
+
+# ggsave(paste0("harold_treemap_", word, ".png"), plot = treemap_plot, width = 6, height = 4, dpi = 300)
+```
